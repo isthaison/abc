@@ -1,8 +1,9 @@
 import React from "react";
 import "./App.css";
-import 'bootstrap/dist/css/bootstrap.min.css';
+import "bootstrap/dist/css/bootstrap.min.css";
 import { Game } from "./Game";
 import { Home } from "./Home";
+import { Admin } from "./Admin";
 
 export default function App() {
   return (
@@ -33,7 +34,7 @@ export default function App() {
           </li>
           <li>
             <a href="#four" className="link link-theme link-arrow">
-              CONTACT
+              ADMIN
             </a>
           </li>
         </ul>
@@ -89,6 +90,7 @@ export default function App() {
               “Something’s fallen down in there”, said the chief clerk in the
               room on the left.
             </p>
+            <Admin/>
           </article>
         </section>
 

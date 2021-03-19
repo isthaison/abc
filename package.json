@@ -1,18 +1,21 @@
 {
   "name": "timkhobau",
   "version": "0.1.1",
-  "homepage": "https://isthaison.github.io/adb/",
+  "homepage": "https://isthaison.github.io/abc/",
   "private": true,
   "dependencies": {
     "@types/websql": "0.0.27",
     "bootstrap": "^4.6.0",
+    "devextreme": "^20.2.6",
+    "devextreme-react": "^20.2.6",
     "react": "^17.0.1",
     "react-bootstrap": "^1.5.2",
     "react-dom": "^17.0.1",
     "react-router-dom": "^5.2.0",
     "react-scripts": "4.0.3",
     "typescript": "^4.2.3",
-    "web-vitals": "^1.0.1"
+    "web-vitals": "^1.0.1",
+    "yarn": "^1.22.10"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^5.11.4",

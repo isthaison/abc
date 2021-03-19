@@ -1,0 +1,1 @@
+export const db = window.openDatabase("mdb", "1.0", "TestDB", 10 * 1024 * 1024);

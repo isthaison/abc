@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Button, FormControl, InputGroup, Modal } from "react-bootstrap";
+import { db } from "./db";
 import "./Game.css";
 
 const list_color = [
@@ -50,8 +51,6 @@ function Square(props: SquareProps) {
   );
 }
 
-const db = window.openDatabase("mdb", "1.0", "TestDB", 10 * 1024 * 1024);
-
 export function Game() {
   const [matrix, _matrix] = useState<number[][]>(
     Array(7).fill(Array(7).fill(-1))
@@ -82,27 +81,32 @@ export function Game() {
   useEffect(() => init(), []);
 
   const init = () => {
-    db.transaction(function (tx) {
-      tx.executeSql(
-        "CREATE TABLE IF NOT EXISTS questions (id unique, question text)"
-      );
-      tx.executeSql(
-        "CREATE TABLE IF NOT EXISTS answers (id unique, answers text, result boolean )"
-      );
+    db.transaction(
+      function (tx) {
+        tx.executeSql(
+          "CREATE TABLE IF NOT EXISTS questions (id text PRIMARY KEY, question text, groupseq text)"
+        );
+        tx.executeSql(
+          "CREATE TABLE IF NOT EXISTS answers (id text PRIMARY KEY, questionid text,answers text, result boolean )"
+        );
 
-      tx.executeSql(
-        'INSERT INTO questions (id, question) VALUES (1, "question 1")'
-      );
-      tx.executeSql(
-        'INSERT INTO questions (id, question) VALUES (2, "question 2")'
-      );
+        tx.executeSql(
+          'INSERT INTO questions (id, question ,groupseq) VALUES ("1", "question 1" ,"1")'
+        );
+        tx.executeSql(
+          'INSERT INTO questions (id, question ,groupseq) VALUES ("2", "question 2","1")'
+        );
 
-      tx.executeSql(
-        'INSERT INTO answers (id, answers,result) VALUES (1, "answers 1", 1)'
-      );
-    });
+        tx.executeSql(
+          'INSERT INTO answers (id,  questionid ,answers,result) VALUES ("1", "1","answers 1", 1)'
+        );
+      },
+      (e) => {
+        console.log(e);
+      }
+    );
     db.transaction(function (tx) {
-      tx.executeSql("SELECT * FROM question", [], function (tx, results) {
+      tx.executeSql("SELECT * FROM questions", [], function (tx, results) {
         console.log(results);
       });
     });
@@ -176,7 +180,8 @@ export function Game() {
           <Modal.Title>Tạo đội mới nè ^ ^ </Modal.Title>
         </Modal.Header>
         <Modal.Body>
-          Woohoo, you're reading this text! ({modalteam.x},{modalteam.y})
+          Woohoo, you're reading this text! (
+          {`${list_char[modalteam.x]}${modalteam.y + 1}`})
         </Modal.Body>
 
         <InputGroup className="mb-3">
