@@ -21,60 +21,6 @@ const list_color = [
   "#ff9100",
 ];
 const list_char = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K"];
-const list_question = [
-  {},
-  {},
-  {},
-  {},
-  {},
-  {},
-  {},
-  {},
-  {},
-  {},
-  {},
-  {},
-  {},
-  {},
-  {},
-  {},
-  {},
-  {},
-  {},
-  {},
-  {},
-  {},
-  {},
-  {},
-  {},
-  {},
-];
-const list_team = [
-  {
-    name: "T1",
-  },
-  {
-    name: "T2",
-  },
-  {
-    name: "T3",
-  },
-  {
-    name: "T4",
-  },
-  {
-    name: "T5",
-  },
-  {
-    name: "T6",
-  },
-  {
-    name: "T7",
-  },
-  {
-    name: "T8",
-  },
-];
 
 type SquareProps = {
   onClick?: (x: number, y: number) => void;
@@ -99,6 +45,7 @@ function Square(props: SquareProps) {
       onDoubleClick={onDoubleClick}
     >
       {props.value}
+      {`${props.x}` === `3` && `${props.y}` === `3` && <span>🎁</span>}
     </button>
   );
 }
@@ -131,7 +78,6 @@ export function Game() {
         v: true,
       });
     }
-   
   };
   useEffect(() => init(), []);
 
@@ -167,25 +113,24 @@ export function Game() {
   const handleInsertTeam = () => {
     const { x, y } = modalteam;
 
-      let m: number[][] = JSON.parse(JSON.stringify(matrix));
+    let m: number[][] = JSON.parse(JSON.stringify(matrix));
 
-      m[x][y] = listteam.length;
-      console.log(m);
+    m[x][y] = listteam.length;
+    console.log(m);
 
-      _matrix(m);
+    _matrix(m);
 
-      _listteam((prev) => [...prev, { name: valueteamname }]);
+    _listteam((prev) => [...prev, { name: valueteamname }]);
 
-      handleClose();
-      _valueteamname("")
-    
+    handleClose();
+    _valueteamname("");
   };
 
   return (
     <>
       <div className="game">
         <div className="game-info">
-          <div style={{ display: "flex" , flexWrap:'wrap'}}>
+          <div style={{ display: "flex", flexWrap: "wrap" }}>
             {listteam.map((e, i) => (
               <span
                 style={{
