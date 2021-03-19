@@ -9,14 +9,7 @@ export function Home() {
         <p>
           Nhóm <code>ABC</code> never die.
         </p>
-        <a
-          className="App-link"
-          href="/game"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Run
-        </a>
+       
       </header>
     </div>
   );
