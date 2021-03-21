@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Button, FormControl, InputGroup, Modal } from "react-bootstrap";
+
 import { db } from "./db";
 import "./Game.css";
 
@@ -30,23 +31,84 @@ type SquareProps = {
   x: number;
   y: number;
   value: string;
+  onDrop?: (e: any) => void;
+  onDragOver?: (e: any) => void;
 };
+type useDoubleClickProps = {
+  ref: any;
+  latency: number;
+  onSingleClick?: (e: any) => void;
+  onDoubleClick?: (e: any) => void;
+};
+const useDoubleClick = ({
+  ref,
+  latency = 300,
+  onSingleClick = () => null,
+  onDoubleClick = () => null,
+}: useDoubleClickProps) => {
+  useEffect(() => {
+    const clickRef = ref.current;
+    let clickCount = 0;
+    const handleClick = (e: any) => {
+      clickCount += 1;
+
+      setTimeout(() => {
+        if (clickCount === 1) onSingleClick(e);
+        else if (clickCount === 2) onDoubleClick(e);
+
+        clickCount = 0;
+      }, latency);
+    };
+
+    // Add event listener for click events
+    clickRef.addEventListener("click", handleClick);
+
+    // Remove event listener
+    return () => {
+      clickRef.removeEventListener("click", handleClick);
+    };
+  });
+};
+
 function Square(props: SquareProps) {
-  function onClick() {
-    props.onClick && props.onClick(props.x, props.y);
-  }
+  const buttonRef = useRef<any>();
+
+  useDoubleClick({
+    /** A callback function for single click events */
+    onSingleClick: (e: any) => onClick(),
+    /** A callback function for double click events */
+    onDoubleClick: (e: any) => onDoubleClick(),
+    /** (Required) Dom node to watch for double clicks */
+    ref: buttonRef,
+    /**
+     * The amount of time (in milliseconds) to wait
+     * before differentiating a single from a double click
+     */
+    latency: 350,
+  });
   function onDoubleClick() {
-    props.onDoubleClick && props.onDoubleClick(props.x, props.y);
+    props.team === -1 &&
+      props.onDoubleClick &&
+      props.onDoubleClick(props.x, props.y);
   }
+
+  function onClick() {
+    props.team === -1 && props.onClick && props.onClick(props.x, props.y);
+  }
+
   return (
     <button
+      onDrop={props.onDrop}
+      onDragOver={props.onDragOver}
+      ref={buttonRef}
       style={{ background: list_color[props.team] }}
       className="square"
-      onClick={onClick}
-      onDoubleClick={onDoubleClick}
+      data-x={props.x}
+      data-y={props.y}
+      data-team={props.team}
     >
       {props.value}
-      {`${props.x}` === `3` && `${props.y}` === `3` && <span>🎁</span>}
+      {/* {`${props.x}` === `3` && `${props.y}` === `3` && <span>🎁</span>} */}
     </button>
   );
 }
@@ -68,7 +130,11 @@ export function Game() {
   const [listteam, _listteam] = useState<{ name: string }[]>([]);
   const [valueteamname, _valueteamname] = useState<string>("");
 
-  const handleClick = (x: number, y: number) => {};
+  const [showmodalquestion, _showmodalquestion] = useState<boolean>(false);
+
+  const handleClick = (x: number, y: number) => {
+    _showmodalquestion(true);
+  };
   const handleDoubleClick = (x: number, y: number) => {
     if (x === 0 || y === 0 || y === 6 || x === 6) {
       _modalteam({
@@ -84,21 +150,10 @@ export function Game() {
     db.transaction(
       function (tx) {
         tx.executeSql(
-          "CREATE TABLE IF NOT EXISTS questions (id text PRIMARY KEY, question text, groupseq text)"
+          "CREATE TABLE IF NOT EXISTS questions (id text PRIMARY KEY, question text, groupseq text, isDone boolean, img  text )"
         );
         tx.executeSql(
-          "CREATE TABLE IF NOT EXISTS answers (id text PRIMARY KEY, questionid text,answers text, result boolean )"
-        );
-
-        tx.executeSql(
-          'INSERT INTO questions (id, question ,groupseq) VALUES ("1", "question 1" ,"1")'
-        );
-        tx.executeSql(
-          'INSERT INTO questions (id, question ,groupseq) VALUES ("2", "question 2","1")'
-        );
-
-        tx.executeSql(
-          'INSERT INTO answers (id,  questionid ,answers,result) VALUES ("1", "1","answers 1", 1)'
+          "CREATE TABLE IF NOT EXISTS answers (id text PRIMARY KEY, questionid text,answers text, result boolean, img  text )"
         );
       },
       (e) => {
@@ -130,6 +185,128 @@ export function Game() {
     _valueteamname("");
   };
 
+  function dragging(event: any) {}
+
+  function dragStart(event: any) {
+    event.dataTransfer.setData("Text", event.target.id);
+  }
+  const [teamselecting, _teamselecting] = useState<number>(-1);
+  const [sqselecting, _sqselecting] = useState<{ x: number; y: number }>({
+    x: -1,
+    y: -1,
+  });
+
+  const [groupquestion, _groupquestion] = useState<string>("");
+
+  const [questionselecting, _questionselecting] = useState<any>(null);
+
+  const [answersselecting, _answersselecting] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (questionselecting) {
+      GetAnswers(questionselecting);
+    }
+  }, [questionselecting]);
+
+  function GetQuestion() {
+    db.transaction(
+      function (tx) {
+        tx.executeSql(
+          `SELECT * FROM questions where groupseq=? and isDone != 1`,
+          [groupquestion],
+          function (tx, { rows }) {
+            console.log({ rows });
+
+            if (rows.length === 0) {
+              _questionselecting(null);
+            } else {
+              _questionselecting(rows.item(0));
+            }
+          }
+        );
+      },
+      (e) => {
+        console.log(e);
+        _questionselecting(null);
+      }
+    );
+  }
+
+  function GetAnswers(a: any) {
+    db.transaction(function (tx) {
+      tx.executeSql(
+        `SELECT * FROM answers where questionid=?`,
+        [a["id"]],
+        function (tx, { rows }) {
+          const s: object[] = [];
+          console.log(rows);
+
+          for (let i = 0; i < rows.length; i++) {
+            s.push(rows.item(i));
+          }
+
+          _answersselecting(s);
+        }
+      );
+    });
+  }
+
+  function drop(event: any) {
+    event.preventDefault();
+    const data = event.dataTransfer.getData("Text");
+
+    const el: any = document.getElementById(data);
+
+    const datasetel = el.dataset;
+    console.log({ datasetel });
+
+    const { dataset } = event.target;
+
+    if (dataset["team"] === "-1") {
+      _teamselecting(parseInt(datasetel["team"]));
+      _sqselecting({
+        x: parseInt(dataset["x"]),
+        y: parseInt(dataset["y"]),
+      });
+      GetQuestion();
+      _showmodalquestion(true);
+    }
+  }
+  function allowDrop(event: any) {
+    event.preventDefault();
+  }
+
+  function AnsweronTrue() {
+    window.alert(questionselecting["id"]);
+    questionselecting &&
+      db.transaction(
+        function (tx) {
+          tx.executeSql("update questions set isDone=1 where id = ?", [
+            questionselecting["id"],
+          ]);
+        },
+        (e) => {
+          console.log(e);
+        }
+      );
+
+
+    if (teamselecting != null && sqselecting != null) {
+      console.log({
+        teamselecting,
+        sqselecting,
+      });
+
+      let m: number[][] = JSON.parse(JSON.stringify(matrix));
+
+      m[sqselecting.x][sqselecting.y] = teamselecting;
+
+      _matrix(m);
+    }
+
+    _showmodalquestion(false)
+  }
+
   return (
     <>
       <div className="game">
@@ -137,20 +314,24 @@ export function Game() {
           <div style={{ display: "flex", flexWrap: "wrap" }}>
             {listteam.map((e, i) => (
               <span
+                onDragStart={dragStart}
+                onDrag={dragging}
+                draggable="true"
                 style={{
                   background: list_color[i],
                   margin: "1px",
                   fontSize: "2rem",
                 }}
                 key={`${e.name}${i}`}
+                id={`${e.name}${i}`}
+                data-team={`${i}`}
               >
                 <b>{e.name}</b>
               </span>
             ))}
           </div>
         </div>
-        <h2>Điều kiện thắng:</h2>
-        <p>Đường đi phải lớn hơn 7 ô</p>
+        <p>Đường đi phải lớn hơn bằng 6 ô</p>
 
         <div className="game-board">
           {matrix.map((e, x) => (
@@ -168,12 +349,18 @@ export function Game() {
                   value={`${list_char[x]}${y + 1}`}
                   onClick={handleClick}
                   onDoubleClick={handleDoubleClick}
+                  onDrop={drop}
+                  onDragOver={allowDrop}
                 />
               ))}
             </div>
           ))}
         </div>
       </div>
+      <input
+        value={groupquestion}
+        onChange={({ target }) => _groupquestion(target.value)}
+      />
 
       <Modal show={modalteam.v} onHide={handleClose}>
         <Modal.Header closeButton>
@@ -205,12 +392,70 @@ export function Game() {
           </Button>
         </Modal.Footer>
       </Modal>
+
+      <Modal show={showmodalquestion} onHide={() => _showmodalquestion(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>
+            Trả lời câu hỏi nè ^ ^ ({listteam[teamselecting]?.name}) [
+            {`${list_char[sqselecting.x]}${sqselecting.y + 1}`}]
+          </Modal.Title>
+        </Modal.Header>
+        {questionselecting && (
+          <Modal.Body>
+            <h3>{questionselecting && questionselecting["question"]}</h3>
+            {answersselecting.map((ef, i) => (
+              <Answer onTrue={AnsweronTrue} key={ef["id"]} data={ef} i={i} />
+            ))}
+          </Modal.Body>
+        )}
+
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => _showmodalquestion(false)}>
+            Đóng lại đi
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </>
   );
 }
 
 // ========================================
 
-function calculateWinner(squares: object[][]) {
-  return null;
+type AnswerProps = {
+  data: any;
+  onTrue: () => void;
+  i: number;
+};
+
+function Answer({ data, onTrue, i }: AnswerProps) {
+  const [showresult, _showresult] = useState<boolean>(false);
+
+  function onClick() {
+    _showresult(true);
+  }
+
+  function onClickTrue() {
+    console.log(data);
+
+    if (data["result"] === 1) {
+      onTrue();
+    }
+  }
+
+  return (
+    <h4 onClick={onClick}>
+      {showresult && (
+        <span
+          onClick={onClickTrue}
+          style={{
+            color: data["result"] === 1 ? "green" : "red",
+            fontSize: "2rem",
+          }}
+        >
+          {data["result"] === 1 ? `❎` : "❌"}
+        </span>
+      )}
+      ({list_char[i]}) {data["answers"]}
+    </h4>
+  );
 }
